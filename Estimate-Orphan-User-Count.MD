@@ -1,6 +1,6 @@
 # Estimate Number of Orphan Users in Microsoft 365 Tenant
 
-PowerShell script to estimate - how many orphan users there are in Microsoft 365 tenant
+PowerShell script to estimate: how many orphaned users are there in a Microsoft 365 tenant.
 
 Scanning all Microsoft 365 SharePoint sites for orphan users could be time-consuming, especially for large tenants
 The script
