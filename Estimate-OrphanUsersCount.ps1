@@ -11,7 +11,8 @@
 # - calculates the estimated number of orphan users in the tenant
 # 
 
-$randomSetSize = 5 # sites
+$randomSetSizeMin = 100 # sites
+$randomSetSizeMax = 1000 # sites
 
 $connectionAdmin = Connect-PnPOnline -ReturnConnection -Url $adminUrl -ClientId $ClientId -Thumbprint $Thumbprint -Tenant $tenantId
 $connectionAdmin.url
@@ -25,13 +26,25 @@ $allTenantSites.count
 $allTenantSites = $allTenantSites | ?{ $_.Status -eq "Active" }
 $allTenantSites.count
 $allTenantSites = $allTenantSites | ?{ $_.ArchiveStatus -eq "NotArchived" }
-$allTenantSites.count
+# $allTenantSites.count
+
+Write-Host "Total sites in tenant: $($allTenantSites.count)"
+
+if (!$randomSetSize) {
+    $randomSetSize = [Math]::Max($randomSetSizeMin, $allTenantSites.Count/50)
+    $randomSetSize = [Math]::Min($randomSetSizeMax, $randomSetSize)
+}
+Write-Host "Random set size for scanning: $randomSetSize"
 
 $randomSites1 = $allTenantSites | Get-Random -Count $randomSetSize
 $orphanUserEntries1 = Get-OrphanUserEntries -Sites $randomSites1 -ConnectionAdmin $connectionAdmin
 Write-Host "Orphan user entries from scan 1: $($orphanUserEntries1.Count)"
 # $orphanUserEntries1 | Format-Table -Property UPN, Url, AccountEnabled
 $orphanUser1 = $orphanUserEntries1 | select-object -Property UPN -ExpandProperty UPN -Unique    
+if ($orphanUser1.Count -eq 0) {
+    Write-Host "No orphan users detected during scan 1. Exiting script."
+    exit
+}
 Write-Host "Unique orphan users from scan 1: $($orphanUser1.count)"
 
 $randomSites2 = $allTenantSites | Get-Random -Count $randomSetSize
@@ -39,29 +52,30 @@ $orphanUserEntries2 = Get-OrphanUserEntries -Sites $randomSites2 -ConnectionAdmi
 Write-Host "Orphan user entries from scan 2: $($orphanUserEntries2.Count)"  
 # $orphanUserEntries2 | Format-Table -Property UPN, Url, AccountEnabled
 $orphanUser2 = $orphanUserEntries2 | select-object -Property UPN -ExpandProperty UPN -Unique    
+if ($orphanUser2.Count -eq 0) {
+    Write-Host "No orphan users detected during scan 2. Exiting script."
+    exit
+}
 Write-Host "Unique orphan users from scan 2: $($orphanUser2.count)"
 
 # how many orphan users from scan 2 were already detected in scan 1
 $orphanUser2PreviouslyDetected = $orphanUser2 | Where-Object { $orphanUser1 -contains $_ }
 Write-Host "Orphan users from scan 2 previously detected in scan 1: $($orphanUser2PreviouslyDetected.count)"
 
+# use Chao2
+$chao2Estimate = ($orphanUser1.count * $orphanUser2.count) / ($orphanUser2PreviouslyDetected.count)
+Write-Host "Chao2 estimate of orphan users in the tenant: $([int]$chao2Estimate)"
 
+# use my own estimation method based on the number of sites
+$myEstimate = 3000*[Math]::Pow(($allTenantSites.count), 0.376)
+Write-Host "My estimate of orphan users in the tenant: $([int]$myEstimate)"
 
-
-
-
-
-
+[Math]::Pow($myEstimate * $chao2Estimate, 0.5)
+Write-Host "Combined estimate of orphan users in the tenant: $([int][Math]::Pow($myEstimate * $chao2Estimate, 0.5))"
 
 Write-Host "Total sites in tenant: $($allTenantSites.count)"
-Write-Host "Total orphan users-sites pairs found: $($orphanUserEntries.count)"
-$orphanUsers = $orphanUserEntries | select-object -Property LoginName -ExpandProperty LoginName -Unique
-Write-Host "Total unique orphan users found: $($orphanUsers.count)"
-$sitesWithorphanUsers = $orphanUserEntries | select-object -Property SiteUrl -ExpandProperty SiteUrl -Unique
-Write-Host "Total sites with orphan users found: $($sitesWithorphanUsers.count)"    
-
-$PnPEntraIDUsers = Get-PnPEntraIDUsers -Connection $connectionAdmin -Identity $upn    
-Write-Host "PnP Entra ID Users: " $PnPEntraIDUsers.count
+$PnPEntraIDUsers = Get-PnPEntraIDUser -Connection $connectionAdmin 
+Write-Host "PnP Entra ID Users count: " $PnPEntraIDUsers.count
 
 
 
