@@ -3,3 +3,4 @@
 
 
 - [Scan Small Tenant for Orphan Users](./Scan-Small-Tenant.MD)
+- [Estimate Number of Orphan Users in Microsoft 365 Tenant](./Estimate-Orphan-User-Count.MD)
