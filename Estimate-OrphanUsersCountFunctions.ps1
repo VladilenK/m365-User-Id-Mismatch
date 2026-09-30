@@ -3,15 +3,13 @@
 function Get-OrphanUserEntries {
     param (
         [Parameter(Mandatory = $true)]
-        [PSObject[]]$Sites,
-        [Parameter(Mandatory = $true)]
-        $ConnectionAdmin
+        [PSObject[]]$Sites
     )
 
     $orphanUserEntries = [System.Collections.Generic.List[PSObject]]::new()
     foreach ($site in $Sites) {
         # Write-Host "Scanning site: $($site.Url)"
-        Write-Progress -Activity "Scanning sites for orphan users" -Status "Scanning $($site.Url)" -PercentComplete (($Sites.IndexOf($site) / $Sites.Count) * 100)
+        Write-Progress -Activity " Scanning sites for orphan users" -Status " Scanning $($site.Url)" -PercentComplete (($Sites.IndexOf($site) / $Sites.Count) * 100)
         $connectionSite = Connect-PnPOnline -ReturnConnection -Url $site.Url -ClientId $ClientId -Thumbprint $Thumbprint -Tenant $tenantId
         # Get-PnPSite -Connection $connectionSite
         $allUILEntries = Get-PnPUser -Connection $connectionSite
