@@ -42,29 +42,30 @@ Write-Host "Iterations for scanning: $iterations"
 
 
 $results = @()
-$scannedSitesCount = 0
-$orphanUserCount = 0
 $randomSitesCount = $randomSetSize
+$cumulativeScannedSitesCount = 0
+$cumulativeOrphanUser = @()
 for ($i = 1; $i -le $iterations; $i++) {
     Write-Host "Random sites count for scan $i :" $randomSitesCount
     $randomSites = $allTenantSites | Get-Random -Count $randomSitesCount
     $orphanUserEntries = Get-OrphanUserEntries -Sites $randomSites 
     $orphanUser = $orphanUserEntries | select-object -Property UPN -ExpandProperty UPN -Unique    
     Write-Host "Unique orphan users from scan $i :" $($orphanUser.count)
-    $scannedSitesCount += + $randomSites.Count
-    $orphanUserCount += $orphanUser.Count
+    $cumulativeOrphanUser += $orphanUser; 
+    $cumulativeOrphanUser = $cumulativeOrphanUser | Select-Object -Unique
+    Write-Host "Cumulative unique orphan users after scan $i :" $($cumulativeOrphanUser.count)
+    $cumulativeScannedSitesCount += $randomSites.Count
     $results += [PSCustomObject]@{
         Scan = $i
-        SitesCount = $scannedSitesCount
-        UniqueOrphanUsersCount = $orphanUserCount
+        SitesCount = $randomSites.Count
+        CumulativeSitesCount = $cumulativeScannedSitesCount
+        UniqueOrphanUsersCount = $orphanUser.Count
+        CumulativeUniqueOrphanUsersCount = $cumulativeOrphanUser.count
     }
-    Write-Host "Cumulative scanned sites: $scannedSitesCount"
-    Write-Host "Cumulative unique orphan users: $orphanUserCount"
-    Write-Host "================================================"
     $randomSitesCount = $randomSetSize*[Math]::Pow(2, $i-1) 
 }
 
-$results
+$results | ft -AutoSize
 
 # LOGARITHMIC LINEAR REGRESSION (Calculates z and c)
 $logA = @()
