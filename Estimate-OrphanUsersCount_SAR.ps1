@@ -111,4 +111,52 @@ $dampenedExponent = $z * (1.0 - [Math]::Sqrt($samplingRatio))
 # Extrapolate total orphans
 $estimatedTotalOrphans = $Ssample * [Math]::Pow(($totalTenantSites / $Asample), $dampenedExponent)
 
+#####
 
+function Estimate-TenantOrphanUsers {
+    param (
+        [Parameter(Mandatory=$true)]
+        [long]$TotalTenantSites,
+
+        [Parameter(Mandatory=$true)]
+        [int]$SitesStep400,
+
+        [Parameter(Mandatory=$true)]
+        [long]$OrphansStep400,
+
+        [Parameter(Mandatory=$true)]
+        [int]$SitesStep800,
+
+        [Parameter(Mandatory=$true)]
+        [long]$OrphansStep800
+    )
+
+    # 1. Calculate latest interval discovery rate (z_latest)
+    $lnS_diff = [Math]::Log($OrphansStep800) - [Math]::Log($OrphansStep400)
+    $lnA_diff = [Math]::Log($SitesStep800) - [Math]::Log($SitesStep400)
+    $z_latest = $lnS_diff / $lnA_diff
+
+    # 2. Calculate logarithmic scale ratio
+    $scaleRatio = $TotalTenantSites / $SitesStep800
+    $logScale = [Math]::Log10($scaleRatio)
+
+    # 3. Apply saturation dampening coefficient (0.357)
+    $dampeningFactor = 1.0 + (0.357 * $logScale)
+    $z_effective = $z_latest / $dampeningFactor
+
+    # 4. Extrapolate total orphan user population
+    $estimatedTotalOrphans =$OrphansStep800 * [Math]::Pow($scaleRatio,$z_effective)
+
+    # 5. Output summary
+    [PSCustomObject]@{
+        TotalTenantSites      = $TotalTenantSites
+        SampleScannedSites    = $SitesStep800
+        SampleOrphansFound    = $OrphansStep800
+        LatestSlope_z         = [Math]::Round($z_latest, 4)
+        DampenedSlope_zEff    = [Math]::Round($z_effective, 4)
+        EstimatedTotalOrphans = [Math]::Round($estimatedTotalOrphans, 0)
+    }
+}
+
+
+# DampenedSlope_zEff    : 0.3367 
